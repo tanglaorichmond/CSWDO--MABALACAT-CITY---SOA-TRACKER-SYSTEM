@@ -16,7 +16,9 @@ import {
   ChevronUp,
   LayoutGrid,
   List,
-  Building2
+  Building2,
+  HeartPulse,
+  FlaskConical
 } from "lucide-react";
 import ConfirmationModal from "./ConfirmationModal";
 
@@ -98,6 +100,27 @@ export default function SOAList({
     return diffDays > targetDays;
   };
 
+  const getOverdueDays = (doc: SOADoc) => {
+    if (doc.status === "Released") return 0;
+    
+    const stepKeys: { [key: number]: keyof SLASettings } = {
+      1: 'receiving', 2: 'verification', 3: 'sorting', 
+      4: 'checklist', 5: 'accounting', 6: 'release'
+    };
+
+    const settings = slaSettings || DEFAULT_SLA_SETTINGS;
+    const targetDays = settings[stepKeys[doc.currentStep]] as number;
+    if (!targetDays) return 0;
+
+    const lastUpdate = new Date(doc.updatedAt).getTime();
+    const diffDays = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
+    if (diffDays > targetDays) {
+      const value = Math.floor(diffDays - targetDays);
+      return value === 0 ? 1 : value;
+    }
+    return 0;
+  };
+
   // Format currency
   const formatPHP = (val: number) => {
     return new Intl.NumberFormat("en-PH", {
@@ -145,6 +168,70 @@ export default function SOAList({
       case 6: return "Finance releasing pipeline";
       default: return `Step ${step}`;
     }
+  };
+
+  // Get Category Icon Details (Design base on category)
+  const getCategoryIconDetails = (category?: string, hasDelay?: boolean) => {
+    const cat = (category || "").toLowerCase();
+    
+    if (cat === "hospital" || cat === "health") {
+      return {
+        icon: <HeartPulse className="h-5 w-5" />,
+        bgColor: hasDelay ? "bg-rose-100 text-rose-600 border border-rose-200" : "bg-rose-50 text-rose-500 border border-rose-100",
+        label: "Hospital",
+        textColor: "text-rose-600"
+      };
+    } else if (cat === "laboratories" || cat === "laboratory" || cat === "lab") {
+      return {
+        icon: <FlaskConical className="h-5 w-5" />,
+        bgColor: hasDelay ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-purple-50 text-purple-500 border border-purple-100",
+        label: "Laboratory",
+        textColor: "text-purple-600"
+      };
+    } else if (cat === "funeral") {
+      return {
+        icon: <Building2 className="h-5 w-5" />,
+        bgColor: hasDelay ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-amber-50 text-amber-500 border border-amber-100",
+        label: "Funeral",
+        textColor: "text-amber-500"
+      };
+    }
+    
+    // Default fallback
+    return {
+      icon: <Building2 className="h-5 w-5" />,
+      bgColor: hasDelay ? "bg-slate-100 text-slate-500 border border-slate-200" : "bg-slate-50 text-slate-400 border border-slate-100",
+      label: "Other Partner",
+      textColor: "text-slate-400"
+    };
+  };
+
+  const renderCategoryMiniIcon = (category?: string) => {
+    const cat = (category || "").toLowerCase();
+    if (cat === "hospital" || cat === "health") {
+      return (
+        <span className="p-1.5 bg-rose-50 border border-rose-100 text-rose-500 rounded-lg shrink-0 flex items-center justify-center">
+          <HeartPulse className="h-3.5 w-3.5" />
+        </span>
+      );
+    } else if (cat === "laboratories" || cat === "laboratory" || cat === "lab") {
+      return (
+        <span className="p-1.5 bg-purple-50 border border-purple-100 text-purple-500 rounded-lg shrink-0 flex items-center justify-center">
+          <FlaskConical className="h-3.5 w-3.5" />
+        </span>
+      );
+    } else if (cat === "funeral") {
+      return (
+        <span className="p-1.5 bg-amber-50 border border-amber-100 text-amber-500 rounded-lg shrink-0 flex items-center justify-center">
+          <Building2 className="h-3.5 w-3.5" />
+        </span>
+      );
+    }
+    return (
+      <span className="p-1.5 bg-slate-50 border border-slate-100 text-slate-400 rounded-lg shrink-0 flex items-center justify-center">
+        <Building2 className="h-3.5 w-3.5" />
+      </span>
+    );
   };
 
   // Handle delete click with customized safety check
@@ -517,11 +604,16 @@ export default function SOAList({
 
                       {/* Stakeholder Info */}
                       <td className="px-6 py-4.5">
-                        <div className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase text-xs tracking-tight">
-                          {soa.stakeholderName}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 flex items-center space-x-1 font-bold">
-                          <span>Logger: {soa.createdBy?.displayName || "System"}</span>
+                        <div className="flex items-center gap-2.5">
+                          {renderCategoryMiniIcon(soa.stakeholderCategory)}
+                          <div>
+                            <div className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase text-xs tracking-tight">
+                              {soa.stakeholderName}
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5 flex items-center space-x-1 font-bold">
+                              <span>Logger: {soa.createdBy?.displayName || "System"}</span>
+                            </div>
+                          </div>
                         </div>
                       </td>
 
@@ -543,7 +635,7 @@ export default function SOAList({
                           </span>
                           {isOverdue(soa) && (
                             <span className="inline-flex px-2 py-0.5 text-[9px] bg-rose-50 text-rose-700 border border-rose-200 font-extrabold uppercase tracking-widest rounded-md animate-pulse shadow-sm shadow-rose-100 mt-0.5">
-                              ⚠️ Delayed
+                              ⚠️ Delayed ({getOverdueDays(soa)} days)
                             </span>
                           )}
                         </div>
@@ -607,9 +699,12 @@ export default function SOAList({
                   className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 hover:border-blue-200 transition-all active:scale-[0.98] group"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{soa.stakeholderName}</h4>
-                      <p className="text-[10px] font-black text-slate-400 font-mono">BATCH: {soa.batchNumber}</p>
+                    <div className="flex items-center gap-2.5">
+                      {renderCategoryMiniIcon(soa.stakeholderCategory)}
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{soa.stakeholderName}</h4>
+                        <p className="text-[10px] font-black text-slate-400 font-mono">BATCH: {soa.batchNumber}</p>
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className={`inline-flex px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border rounded-md ${getStatusBadgeStyle(soa.status)}`}>
@@ -617,7 +712,7 @@ export default function SOAList({
                       </span>
                       {isOverdue(soa) && (
                         <span className="inline-flex px-2 py-0.5 text-[8px] bg-rose-50 text-rose-700 border border-rose-200 font-black uppercase tracking-widest rounded animate-pulse">
-                          ⚠️ Delayed
+                          ⚠️ Delayed ({getOverdueDays(soa)}d)
                         </span>
                       )}
                     </div>
@@ -660,6 +755,13 @@ export default function SOAList({
               const issueCount = group.soas.filter((s) => s.status === "With Issue").length;
               const completedCount = group.soas.filter((s) => s.status === "Released").length;
               const delayedCount = group.soas.filter((s) => isOverdue(s)).length;
+              const maxDelayedDays = group.soas.reduce((max, s) => {
+                const od = getOverdueDays(s);
+                return od > max ? od : max;
+              }, 0);
+              
+              const groupCategory = group.soas[0]?.stakeholderCategory;
+              const catDetails = getCategoryIconDetails(groupCategory, delayedCount > 0);
               
               return (
                 <div 
@@ -677,8 +779,8 @@ export default function SOAList({
                     className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none transition-all border-b ${delayedCount > 0 ? "bg-rose-50/20 hover:bg-rose-50/40 border-rose-100" : "bg-slate-50/30 hover:bg-slate-50 border-slate-50"}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-3 rounded-xl shrink-0 ${delayedCount > 0 ? "bg-rose-100 text-rose-600" : "bg-blue-50 text-blue-600"}`}>
-                        <Building2 className="h-5 w-5" />
+                      <div className={`p-3 rounded-xl shrink-0 ${catDetails.bgColor}`}>
+                        {catDetails.icon}
                       </div>
                       <div>
                         <h4 className="font-extrabold text-slate-800 text-sm tracking-tight flex items-center gap-2">
@@ -686,12 +788,15 @@ export default function SOAList({
                           {delayedCount > 0 && <AlertCircle className="h-4 w-4 text-rose-500 animate-pulse" />}
                         </h4>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className={`text-[9.5px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${catDetails.bgColor}`}>
+                            {catDetails.label}
+                          </span>
                           <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg font-bold">
                             {group.soas.length} {group.soas.length === 1 ? "document" : "documents"} log
                           </span>
                           {delayedCount > 0 && (
                             <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-0.5 rounded-lg font-bold animate-pulse shadow-sm shadow-rose-100">
-                              ⚠️ {delayedCount} Delayed
+                              ⚠️ {delayedCount} Delayed (up to {maxDelayedDays} days)
                             </span>
                           )}
                           {issueCount > 0 && (
@@ -768,7 +873,7 @@ export default function SOAList({
                                   </span>
                                   {isOverdue(soa) && (
                                     <span className="inline-flex px-1.5 py-0.5 text-[8px] bg-rose-50 text-rose-700 border border-rose-200 font-black uppercase tracking-widest rounded animate-pulse">
-                                      ⚠️ Delayed
+                                      ⚠️ Delayed ({getOverdueDays(soa)} days)
                                     </span>
                                   )}
                                 </div>

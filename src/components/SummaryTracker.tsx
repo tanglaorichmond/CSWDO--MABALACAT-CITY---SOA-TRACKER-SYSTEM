@@ -3,6 +3,7 @@ import { SOADoc, SOAStatus, Stakeholder, SLASettings, DEFAULT_SLA_SETTINGS, User
 import { 
   Building2, 
   HeartPulse, 
+  FlaskConical,
   Activity, 
   Layers, 
   CheckCircle2, 
@@ -75,6 +76,61 @@ export default function SummaryTracker({
     const diffDays = (now - lastUpdate) / (1000 * 60 * 60 * 24);
 
     return diffDays > targetDays;
+  };
+
+  const getOverdueDays = (doc: SOADoc) => {
+    if (doc.status === "Released") return 0;
+    
+    const stepKeys: { [key: number]: keyof SLASettings } = {
+      1: 'receiving',
+      2: 'verification',
+      3: 'sorting',
+      4: 'checklist',
+      5: 'accounting',
+      6: 'release'
+    };
+
+    const settings = slaSettings || DEFAULT_SLA_SETTINGS;
+    const targetDays = settings[stepKeys[doc.currentStep]] as number;
+    if (!targetDays) return 0;
+
+    const lastUpdate = new Date(doc.updatedAt).getTime();
+    const now = Date.now();
+    const diffDays = (now - lastUpdate) / (1000 * 60 * 60 * 24);
+
+    if (diffDays > targetDays) {
+      const value = Math.floor(diffDays - targetDays);
+      return value === 0 ? 1 : value;
+    }
+    return 0;
+  };
+
+  const renderCategoryMiniIcon = (category?: string) => {
+    const cat = (category || "").toLowerCase();
+    if (cat === "hospital" || cat === "health") {
+      return (
+        <span className="p-1.5 bg-rose-50 border border-rose-100 text-rose-500 rounded-lg shrink-0 flex items-center justify-center">
+          <HeartPulse className="h-3.5 w-3.5" />
+        </span>
+      );
+    } else if (cat === "laboratories" || cat === "laboratory" || cat === "lab") {
+      return (
+        <span className="p-1.5 bg-purple-50 border border-purple-100 text-purple-500 rounded-lg shrink-0 flex items-center justify-center">
+          <FlaskConical className="h-3.5 w-3.5" />
+        </span>
+      );
+    } else if (cat === "funeral") {
+      return (
+        <span className="p-1.5 bg-amber-50 border border-amber-100 text-amber-500 rounded-lg shrink-0 flex items-center justify-center">
+          <Building2 className="h-3.5 w-3.5" />
+        </span>
+      );
+    }
+    return (
+      <span className="p-1.5 bg-slate-50 border border-slate-100 text-slate-400 rounded-lg shrink-0 flex items-center justify-center">
+        <Building2 className="h-3.5 w-3.5" />
+      </span>
+    );
   };
 
   // Group stakeholders & compute info
@@ -404,7 +460,7 @@ export default function SummaryTracker({
              <div className="space-y-1.5">
                <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${overdue ? "text-rose-600" : "text-blue-600"}`}>
                  <span className={`h-1.5 w-1.5 rounded-full animate-ping ${overdue ? "bg-rose-500" : "bg-blue-500"}`} />
-                 {overdue ? "Strategic SLA Breach Alert" : "Trace Routing Coordinates"}
+                 {overdue ? `Strategic SLA Breach Alert (${getOverdueDays(doc)} Days Delayed)` : "Trace Routing Coordinates"}
                </span>
                <h3 className="text-base font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
                   Roadmap: STAKEHOLDER {doc.stakeholderName}
@@ -620,7 +676,7 @@ export default function SummaryTracker({
                               <div className="flex items-center gap-4">
                                 <span className={`text-sm font-black uppercase tracking-wider ${overdue ? "text-rose-600" : "text-slate-900"}`}>
                                   BATCH {doc.batchNumber}
-                                  {overdue && " (SLA BREACH)"}
+                                  {overdue && ` (SLA BREACH: ${getOverdueDays(doc)}d DELAY)`}
                                 </span>
                                 <span className="text-xs font-black text-blue-600">₱{doc.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                               </div>
@@ -723,11 +779,21 @@ export default function SummaryTracker({
                         }}
                       >
                         <div className="flex justify-between items-start">
-                          <div className="space-y-0.5">
-                            <h5 className="text-[11px] font-black uppercase text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{doc.stakeholderName}</h5>
-                            <p className="text-[10px] text-slate-500 font-bold font-mono">BATCH: {doc.batchNumber}</p>
+                          <div className="flex items-center gap-2.5">
+                            {renderCategoryMiniIcon(doc.stakeholderCategory)}
+                            <div className="space-y-0.5">
+                              <h5 className="text-[11px] font-black uppercase text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">
+                                {doc.stakeholderName}
+                                {overdue && (
+                                  <span className="ml-1.5 text-[8.5px] text-rose-600 font-extrabold uppercase">
+                                    ({getOverdueDays(doc)}d overdue)
+                                  </span>
+                                )}
+                              </h5>
+                              <p className="text-[10px] text-slate-500 font-bold font-mono">BATCH: {doc.batchNumber}</p>
+                            </div>
                           </div>
-                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
+                          <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest shrink-0 ${
                              isIssue ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
                           }`}>
                             {doc.status}

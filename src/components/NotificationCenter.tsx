@@ -29,6 +29,7 @@ interface ComputedNotification {
   historyItem?: StatusHistoryItem;
   timestamp: Date;
   type: "issue" | "success" | "info" | "transition" | "breach";
+  daysDelayed?: number;
 }
 
 export default function NotificationCenter({
@@ -85,20 +86,23 @@ export default function NotificationCenter({
       if (diffDays > targetDays) {
         // Calculate the exact date & time the document breached the SLA target limit
         const breachTime = new Date(lastUpdate + targetDays * 24 * 60 * 60 * 1000);
-        return breachTime;
+        const value = Math.floor(diffDays - targetDays);
+        const daysDelayed = value === 0 ? 1 : value;
+        return { breachTime, daysDelayed };
       }
       return null;
     };
 
     soas.forEach((soa) => {
       // Only focus on delayed / overdue SOAs for notifications
-      const breachTime = getOverdueInfo(soa);
-      if (breachTime) {
+      const overdueInfo = getOverdueInfo(soa);
+      if (overdueInfo) {
         list.push({
           id: `${soa.id}_overdue`,
           soa,
-          timestamp: breachTime, // The actual time they breached SLA limits
-          type: "breach"
+          timestamp: overdueInfo.breachTime, // The actual time they breached SLA limits
+          type: "breach",
+          daysDelayed: overdueInfo.daysDelayed
         });
       }
     });
@@ -429,7 +433,9 @@ function NotificationRow({ notif, onClick, formatTime }: NotificationRowProps) {
         {/* Tracking status transition */}
         <p className="text-[10px] text-slate-500 font-medium line-clamp-2 leading-relaxed">
           {notif.type === "breach" ? (
-            <span className="text-rose-700 font-black uppercase tracking-tight">SLA Timeline Breach: Document is stalled in stage {notif.soa.status} and needs immediate priority.</span>
+            <span className="text-rose-700 font-black uppercase tracking-tight">
+              SLA Timeline Breach: Document is stalled in stage {notif.soa.status} and is delayed by {notif.daysDelayed} day{notif.daysDelayed === 1 ? "" : "s"}. Needs immediate priority.
+            </span>
           ) : (
             <>
               Moved to <strong className="text-slate-800 font-bold">{notif.historyItem?.status}</strong> 
