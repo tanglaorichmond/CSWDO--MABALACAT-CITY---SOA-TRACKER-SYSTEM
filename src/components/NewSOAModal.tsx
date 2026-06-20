@@ -48,7 +48,7 @@ export default function NewSOAModal({ isOpen, stakeholders = [], currentUser, on
     }
   }, [isOpen, currentUser]);
 
-  const isDisabled = currentUser?.role !== "System Administrator" && !!currentUser?.category;
+  const isDisabled = currentUser?.role !== "System Administrator" && currentUser?.role !== "Admin" && !!currentUser?.category;
 
   if (!isOpen) return null;
 

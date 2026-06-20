@@ -96,7 +96,7 @@ export default function App() {
 
   // Filter SOAs and Stakeholders based on user category and role
   const filteredSoas = useMemo(() => {
-    if (!currentUser || currentUser.role === "System Administrator") return soas;
+    if (!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin") return soas;
     const userCategory = currentUser.category?.toLowerCase();
     if (!userCategory) return soas;
 
@@ -111,7 +111,7 @@ export default function App() {
   }, [soas, currentUser]);
 
   const filteredStakeholders = useMemo(() => {
-    if (!currentUser || currentUser.role === "System Administrator") return stakeholders;
+    if (!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin") return stakeholders;
     const userCategory = currentUser.category?.toLowerCase();
     if (!userCategory) return stakeholders;
 
@@ -444,7 +444,7 @@ export default function App() {
 
   // Admin delete record (now supports users with canDelete permission too!)
   const handleDeleteSOA = async (id: string) => {
-    if (currentUser?.role !== "System Administrator" && currentUser?.canDelete !== true) {
+    if (currentUser?.role !== "System Administrator" && currentUser?.role !== "Admin" && currentUser?.canDelete !== true) {
       showToast("Unauthorized delete attempt.", "error");
       return;
     }

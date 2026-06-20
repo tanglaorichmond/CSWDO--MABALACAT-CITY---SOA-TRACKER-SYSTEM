@@ -20,7 +20,7 @@ export default function StakeholdersDirectoryPage({
   onCreateStakeholder
 }: StakeholdersDirectoryPageProps) {
   const getDefaultSelectedCategory = () => {
-    if (!currentUser || currentUser.role === "System Administrator") return "all";
+    if (!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin") return "all";
     const cat = currentUser.category?.toLowerCase();
     if (cat === "hospital") return "hospital";
     if (cat === "funeral") return "funeral";
@@ -169,7 +169,7 @@ export default function StakeholdersDirectoryPage({
           <div className="flex flex-wrap bg-slate-50 border border-slate-100 rounded-2xl p-1 select-none w-full xl:w-auto">
             {(["all", "hospital", "funeral", "laboratories"] as const).map(cat => {
               const userCategory = currentUser?.category?.toLowerCase();
-              const isRestricted = currentUser?.role !== "System Administrator" && !!userCategory;
+              const isRestricted = currentUser?.role !== "System Administrator" && currentUser?.role !== "Admin" && !!userCategory;
               if (isRestricted && cat !== "all") {
                  const normalizedCat = cat === "laboratories" ? "laboratory" : cat;
                  const normalizedUserCat = userCategory === "laboratories" ? "laboratory" : userCategory;
@@ -334,11 +334,11 @@ export default function StakeholdersDirectoryPage({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Stakeholder Category {(currentUser?.role !== "System Administrator" && !!currentUser?.category) && "(Restricted)"}</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Stakeholder Category {(currentUser?.role !== "System Administrator" && currentUser?.role !== "Admin" && !!currentUser?.category) && "(Restricted)"}</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(["hospital", "funeral", "laboratories"] as const).map(cat => {
                        const userCategory = currentUser?.category?.toLowerCase();
-                       const isRestricted = currentUser?.role !== "System Administrator" && !!userCategory;
+                       const isRestricted = currentUser?.role !== "System Administrator" && currentUser?.role !== "Admin" && !!userCategory;
                        const normalizedCat = cat === "laboratories" ? "laboratory" : cat;
                        const normalizedUserCat = userCategory === "laboratories" ? "laboratory" : userCategory;
                        const disabled = isRestricted && normalizedCat !== normalizedUserCat;

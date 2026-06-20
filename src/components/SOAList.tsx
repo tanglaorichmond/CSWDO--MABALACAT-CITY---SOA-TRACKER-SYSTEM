@@ -581,7 +581,7 @@ export default function SOAList({
                           <span>Audit</span>
                         </button>
                         
-                        {(currentUser.role === "System Administrator" || currentUser.canDelete === true) && (
+                        {(currentUser.role === "System Administrator" || currentUser.role === "Admin" || currentUser.canDelete === true) && (
                           <button
                             type="button"
                             onClick={(e) => handleDelete(soa.id, soa.stakeholderName, e)}
@@ -803,7 +803,7 @@ export default function SOAList({
                                     <Info className="h-3 w-3" />
                                     <span>Details</span>
                                   </button>
-                                  {(currentUser.role === "System Administrator" || currentUser.canDelete === true) && (
+                                  {(currentUser.role === "System Administrator" || currentUser.role === "Admin" || currentUser.canDelete === true) && (
                                     <button
                                       type="button"
                                       onClick={(e) => handleDelete(soa.id, soa.stakeholderName, e)}

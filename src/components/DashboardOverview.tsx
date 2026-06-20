@@ -40,7 +40,7 @@ export default function DashboardOverview({ soas, currentUser, onNavigateToTrack
     { name: "Funeral Services", type: "funeral", color: "#6366f1", icon: "🕯️" },
     { name: "Diagnostic & Labs", type: "laboratories", color: "#8b5cf6", icon: "🔬" }
   ].filter(group => {
-    if (!currentUser || currentUser.role === "System Administrator") return true;
+    if (!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin") return true;
     const userCat = currentUser.category?.toLowerCase();
     if (!userCat) return true;
     const normalizedGroupType = group.type === "laboratories" ? "laboratory" : group.type;

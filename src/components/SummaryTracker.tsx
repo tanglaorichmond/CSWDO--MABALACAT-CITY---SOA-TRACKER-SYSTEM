@@ -539,19 +539,19 @@ export default function SummaryTracker({
 
         {/* Dynamic visual numbers */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3 shrink-0">
-          {(!currentUser || currentUser.role === "System Administrator" || currentUser.category === "Hospital") && (
+          {(!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin" || currentUser.category === "Hospital") && (
             <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center select-none">
               <span className="block text-[8px] sm:text-[10px] text-slate-400 uppercase font-black tracking-widest">Hospital</span>
               <span className="block text-base sm:text-2xl font-black text-rose-400 mt-1">{stats.hospitalSOAs}</span>
             </div>
           )}
-          {(!currentUser || currentUser.role === "System Administrator" || currentUser.category === "Laboratory") && (
+          {(!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin" || currentUser.category === "Laboratory") && (
             <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center select-none">
               <span className="block text-[8px] sm:text-[10px] text-slate-400 uppercase font-black tracking-widest">Laboratory</span>
               <span className="block text-base sm:text-2xl font-black text-blue-400 mt-1">{stats.laboratorySOAs}</span>
             </div>
           )}
-          {(!currentUser || currentUser.role === "System Administrator" || currentUser.category === "Funeral") && (
+          {(!currentUser || currentUser.role === "System Administrator" || currentUser.role === "Admin" || currentUser.category === "Funeral") && (
             <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center select-none">
               <span className="block text-[8px] sm:text-[10px] text-slate-400 uppercase font-black tracking-widest">Funeral</span>
               <span className="block text-base sm:text-2xl font-black text-amber-400 mt-1">{stats.funeralSOAs}</span>

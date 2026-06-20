@@ -142,7 +142,7 @@ export default function UserManagement({ showToast }: UserManagementProps) {
   };
 
   // Summarize counts
-  const adminCount = users.filter(u => u.role === "System Administrator").length;
+  const adminCount = users.filter(u => u.role === "System Administrator" || u.role === "Admin").length;
   const userCount = users.filter(u => u.role === "User").length;
   const guestCount = users.filter(u => u.role === "Guest").length;
 
@@ -228,7 +228,8 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                       onChange={(e) => setPendingRoles({...pendingRoles, [request.uid]: e.target.value as UserRole})}
                     >
                       <option value="User">User</option>
-                      <option value="System Administrator">Admin</option>
+                      <option value="System Administrator">System Administrator</option>
+                      <option value="Admin">Admin</option>
                       <option value="Guest">Guest</option>
                     </select>
                     <button
@@ -314,6 +315,9 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                     } else if (selectedRole === "System Administrator") {
                       setPreCanEdit(true);
                       setPreCanDelete(true);
+                    } else if (selectedRole === "Admin") {
+                      setPreCanEdit(true);
+                      setPreCanDelete(true);
                     } else {
                       setPreCanEdit(true);
                       setPreCanDelete(false);
@@ -323,6 +327,7 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                 >
                   <option value="User">User Account</option>
                   <option value="System Administrator">System Administrator</option>
+                  <option value="Admin">Admin Account</option>
                   <option value="Guest">Guest Viewer</option>
                 </select>
               </div>
@@ -414,6 +419,8 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                       <span className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] uppercase font-black tracking-widest ${
                         profile.role === "System Administrator" 
                           ? "bg-violet-100 text-violet-800" 
+                          : profile.role === "Admin"
+                          ? "bg-purple-100 text-purple-800 border border-purple-200"
                           : profile.role === "User" 
                           ? "bg-blue-100 text-blue-800" 
                           : "bg-slate-100 text-slate-600"
@@ -469,7 +476,8 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                           onChange={(e) => setRoleInput(e.target.value as UserRole)}
                           className="w-full text-[10px] font-bold rounded-lg border border-slate-200 p-2 focus:ring-1 focus:ring-blue-500 bg-white"
                         >
-                          <option value="System Administrator">Admin</option>
+                          <option value="System Administrator">System Administrator</option>
+                          <option value="Admin">Admin</option>
                           <option value="User">User</option>
                           <option value="Guest">Guest</option>
                         </select>
@@ -601,6 +609,9 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                             } else if (newRole === "System Administrator") {
                               setCanEditInput(true);
                               setCanDeleteInput(true);
+                            } else if (newRole === "Admin") {
+                              setCanEditInput(true);
+                              setCanDeleteInput(true);
                             } else {
                               setCanEditInput(true);
                               setCanDeleteInput(false);
@@ -609,6 +620,7 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                           className="text-xs font-semibold rounded-lg border border-slate-200 p-2 focus:ring-1 focus:ring-blue-500"
                         >
                           <option value="System Administrator">System Administrator</option>
+                          <option value="Admin">Admin</option>
                           <option value="User">User</option>
                           <option value="Guest">Guest</option>
                         </select>
@@ -616,6 +628,8 @@ export default function UserManagement({ showToast }: UserManagementProps) {
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
                           profile.role === "System Administrator" 
                             ? "bg-violet-100 text-violet-800" 
+                            : profile.role === "Admin"
+                            ? "bg-purple-100 text-purple-800 border border-purple-200"
                             : profile.role === "User" 
                             ? "bg-blue-100 text-blue-800" 
                             : "bg-slate-100 text-slate-600"

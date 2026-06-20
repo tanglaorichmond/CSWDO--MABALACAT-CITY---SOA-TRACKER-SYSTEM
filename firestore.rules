@@ -2,84 +2,108 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper: Is the user logged in?
-    function isAuthenticated() {
+
+    // Helper functions
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper: Check if user data document exists
-    function hasUserData() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    // Helper: Get user's profile and check role
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "System Administrator";
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    function canEdit() {
-      if (!isAuthenticated() || !exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
-        return false;
-      }
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return userDoc.role == "System Administrator" || 
-             (userDoc.role == "User" && (!('canEdit' in userDoc) || userDoc.canEdit == true));
+    function getUserRole() {
+      return getUserData().role;
     }
 
-    function canDelete() {
-      if (!isAuthenticated() || !exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
-        return false;
-      }
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return userDoc.role == "System Administrator" || 
-             (userDoc.role == "User" && ('canDelete' in userDoc && userDoc.canDelete == true));
+    function canUserEdit() {
+      return getUserData().get('canEdit', false) == true;
+    }
+
+    function canUserDelete() {
+      return getUserData().get('canDelete', false) == true;
+    }
+
+    // Default deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
     }
 
     // Match test_connection
     match /test_connection/{docId} {
-      allow read: if true;
+      allow read, write: if true;
     }
 
     // Match users collection
     match /users/{userId} {
-      allow read: if true; 
-      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
+      allow get: if isSignedIn() && (request.auth.uid == userId || (userExists() && getUserData().role == "System Administrator"));
+      allow list: if isSignedIn() && userExists() && getUserData().role == "System Administrator";
+      allow create, update: if isSignedIn() && (
+        request.auth.uid == userId || (
+          userExists() && getUserData().role == "System Administrator"
+        )
+      );
+      allow delete: if isSignedIn() && 
+                    userExists() && 
+                    getUserData().role == "System Administrator";
     }
 
     // Match soas collection
     match /soas/{soaId} {
       allow read: if true;
-      allow create, update: if canEdit();
-      allow delete: if canDelete();
+      allow create, update: if isSignedIn() && (
+        !userExists() || 
+        getUserData().role == "System Administrator" || 
+        getUserData().role == "Admin" || (
+          getUserData().role == "User" && 
+          getUserData().get('canEdit', true) == true
+        )
+      );
+      allow delete: if isSignedIn() && userExists() && (
+        getUserData().role == "System Administrator" || 
+        getUserData().role == "Admin" || (
+          getUserData().role == "User" && 
+          getUserData().get('canDelete', false) == true
+        )
+      );
     }
     
     // Match registrationRequests collection
     match /registrationRequests/{requestId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if isSignedIn() && 
+                                    userExists() && 
+                                    getUserData().role == "System Administrator";
     }
     
     // Match stakeholders collection
     match /stakeholders/{stakeholderId} {
       allow read: if true;
-      allow create, update: if canEdit();
-      allow delete: if canDelete();
+      allow create, update: if isSignedIn() && (
+        !userExists() || 
+        getUserData().role == "System Administrator" || 
+        getUserData().role == "Admin" || (
+          getUserData().role == "User" && 
+          getUserData().get('canEdit', true) == true
+        )
+      );
+      allow delete: if isSignedIn() && userExists() && (
+        getUserData().role == "System Administrator" || 
+        getUserData().role == "Admin" || (
+          getUserData().role == "User" && 
+          getUserData().get('canDelete', false) == true
+        )
+      );
     }
     
     // Match settings collection
     match /settings/{settingsId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-    
-    // Default deny for everything else
-    match /{document=**} {
-      allow read, write: if false;
+      allow read: if isSignedIn() && userExists() && getUserData().role != "Admin";
+      allow write: if isSignedIn() && userExists() && getUserData().role == "System Administrator";
     }
   }
 }

@@ -45,26 +45,26 @@ export default function Sidebar({
       id: "dashboard",
       label: "Dashboard Specs",
       icon: Compass,
-      roles: ["System Administrator", "User"]
+      roles: ["System Administrator", "Admin", "User"]
     },
     {
       id: "tracking",
       label: "SOA Tracker Report",
       icon: Layers,
-      roles: ["System Administrator", "User"]
+      roles: ["System Administrator", "Admin", "User"]
     },
     {
       id: "directory",
       label: "Stakeholders Directory",
       icon: BookUser,
-      roles: ["System Administrator", "User"],
-      visible: isAdmin
+      roles: ["System Administrator", "Admin", "User"],
+      visible: isAdmin || user.role === "Admin"
     },
     {
       id: "summary",
       label: "Roadmap Tracker",
       icon: Workflow,
-      roles: ["System Administrator", "User", "Guest"]
+      roles: ["System Administrator", "Admin", "User", "Guest"]
     },
     {
       id: "users",
@@ -208,6 +208,8 @@ export default function Sidebar({
                   <span className={`px-1.5 py-0.5 rounded-full text-[8px] uppercase tracking-wider font-extrabold shrink-0 truncate ${
                     user.role === "System Administrator" 
                       ? "bg-violet-500/10 text-violet-400" 
+                      : user.role === "Admin"
+                      ? "bg-purple-500/15 text-purple-400 border border-purple-500/10 animate-pulse"
                       : user.role === "User" 
                       ? "bg-blue-500/10 text-blue-400" 
                       : "bg-slate-500/20 text-slate-400"
