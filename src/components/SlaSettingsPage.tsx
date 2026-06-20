@@ -94,12 +94,12 @@ export default function SlaSettingsPage({ user }: SlaSettingsPageProps) {
   }
 
   const steps = [
-    { key: 'receiving', label: 'Receiving', icon: Clock, desc: 'Initial intake and document check-in.' },
-    { key: 'verification', label: 'Verification', icon: Activity, desc: 'Detailed document review and validation.' },
-    { key: 'sorting', icon: Calendar, label: 'Sorting', desc: 'Categorizing and routing to proper municipal baskets.' },
-    { key: 'checklist', icon: CheckCircle2, label: 'Checklist', desc: 'Auditing of all 7 mandatory attachments.' },
-    { key: 'accounting', icon: Settings, label: 'Accounting', desc: 'Voucher processing and city account clearance.' },
-    { key: 'release', icon: Hourglass, label: 'Release', desc: 'Finalizing payout and physical release.' }
+    { key: 'receiving', label: 'Step 1: Receiving', icon: Clock, desc: 'Initial intake and document check-in.' },
+    { key: 'verification', label: 'Step 2: Verification', icon: Activity, desc: 'Detailed document review and validation.' },
+    { key: 'sorting', icon: Calendar, label: 'Step 3: Sorting', desc: 'Categorizing and routing to proper municipal baskets.' },
+    { key: 'checklist', icon: CheckCircle2, label: 'Step 4: Checklist', desc: 'Auditing of all 7 mandatory attachments.' },
+    { key: 'accounting', icon: Settings, label: 'Step 5: Forwarded to Accounting', desc: 'Processing and voucher registration in Accounting.' },
+    { key: 'release', icon: Hourglass, label: 'Step 6/7: Treasury & Check Releasing', desc: 'Treasury processing, check preparation and releasing.' }
   ];
 
   return (

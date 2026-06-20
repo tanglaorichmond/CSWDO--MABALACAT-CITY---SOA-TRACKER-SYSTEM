@@ -172,8 +172,8 @@ export async function updateChecklist(
   userProfile: { displayName: string; position: string }
 ): Promise<void> {
   const now = new Date().toISOString();
-  const status: SOAStatus = "Checklist Completed";
-  const currentStep = 5; // Proceed to processing to accounting
+  const status: SOAStatus = "Forwarded to Accounting";
+  const currentStep = 5; // Proceed to Forwarded to Accounting
 
   const historyItem: StatusHistoryItem = {
     id: generateId(),
@@ -181,7 +181,7 @@ export async function updateChecklist(
     status,
     updatedBy: `${userProfile.displayName} (${userProfile.position})`,
     updatedAt: now,
-    notes: `Document checklist completed successfully. ${notes || "Forwarding to internal processing for Accounting."}`
+    notes: `Document checklist completed successfully. ${notes || "Forwarded to Accounting Department."}`
   };
 
   try {
@@ -208,16 +208,16 @@ export async function processToAccounting(
   userProfile: { displayName: string; position: string }
 ): Promise<void> {
   const now = new Date().toISOString();
-  const status: SOAStatus = "Processing to Accounting";
-  const currentStep = 6; // Move to Step 6 (Manual Stage transitions)
+  const status: SOAStatus = "Forwarded to Treasury";
+  const currentStep = 6; // Move to Step 6 (Forwarded to Treasury)
 
   const historyItem: StatusHistoryItem = {
     id: generateId(),
-    stage: "Step 5: Processing Stage",
+    stage: "Step 5: Forwarded to Accounting Stage",
     status,
     updatedBy: `${userProfile.displayName} (${userProfile.position})`,
     updatedAt: now,
-    notes: `Processed for Accounting dispatch. ${notes}`
+    notes: `Processed and approved at Accounting. Forwarded to Treasury. ${notes}`
   };
 
   try {
@@ -236,7 +236,7 @@ export async function processToAccounting(
   }
 }
 
-// 6. Manual Status Adjuster (Step 6)
+// 6. Manual Status Adjuster (Step 6 / 7)
 export async function updateManualStatus(
   id: string,
   status: "Forwarded to Accounting" | "Forwarded to Treasury" | "For Releasing" | "Released",
@@ -244,10 +244,16 @@ export async function updateManualStatus(
   userProfile: { displayName: string; position: string }
 ): Promise<void> {
   const now = new Date().toISOString();
+  
+  let currentStep = 6;
+  if (status === "Forwarded to Accounting") currentStep = 5;
+  if (status === "Forwarded to Treasury") currentStep = 6;
+  if (status === "For Releasing") currentStep = 7;
+  if (status === "Released") currentStep = 7;
 
   const historyItem: StatusHistoryItem = {
     id: generateId(),
-    stage: `Step 6: Status Movement - ${status}`,
+    stage: `Step ${currentStep}: Status Movement - ${status}`,
     status,
     updatedBy: `${userProfile.displayName} (${userProfile.position})`,
     updatedAt: now,
@@ -258,6 +264,7 @@ export async function updateManualStatus(
     const docRef = doc(db, SOAS_COLLECTION, id);
     await updateDoc(docRef, {
       status,
+      currentStep,
       manualStatusNotes: notes,
       manualStatusDate: now,
       updatedAt: now

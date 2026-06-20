@@ -29,6 +29,7 @@ import NotificationCenter from "./components/NotificationCenter";
 import SummaryTracker from "./components/SummaryTracker";
 import StakeholdersDirectoryPage from "./components/StakeholdersDirectoryPage";
 import SlaSettingsPage from "./components/SlaSettingsPage";
+import FinancialReport from "./components/FinancialReport";
 import { subscribeToSLASettings } from "./firebase/settingsDb";
 import { requestRegistration } from "./firebase/userDb";
 import { motion, AnimatePresence } from "motion/react";
@@ -656,6 +657,7 @@ export default function App() {
                     {activeTab === "tracking" && "SOA Tracker Report"}
                     {activeTab === "directory" && "Stakeholders Directory"}
                     {activeTab === "summary" && "Roadmap Tracker"}
+                    {activeTab === "financial-report" && "Financial Summary Report"}
                     {activeTab === "settings" && "System Configuration & SLA"}
                     {activeTab === "users" && "Workspace Users Administration"}
                   </h1>
@@ -740,6 +742,15 @@ export default function App() {
                   }}
                   setSelectedStakeholderName={setSelectedStakeholderName}
                   setSelectedViewType={setSelectedViewType}
+                />
+              )}
+
+              {activeTab === "financial-report" && (
+                <FinancialReport
+                  soas={filteredSoas}
+                  stakeholders={filteredStakeholders}
+                  currentUser={currentUser}
+                  showToast={showToast}
                 />
               )}
 

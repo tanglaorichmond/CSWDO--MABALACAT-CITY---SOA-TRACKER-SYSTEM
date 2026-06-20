@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Stakeholder, SOADoc, UserProfile } from "../types";
 import { 
-  Building2, HeartPulse, FileText, Search, Plus, X, BookUser, Edit2, Trash2, Sparkles
+  Building2, HeartPulse, FileText, Search, Plus, X, BookUser, Edit2, Trash2, Sparkles, Flower
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { updateStakeholder, deleteStakeholder, clearAllStakeholders } from "../firebase/stakeholdersDb";
@@ -269,7 +269,7 @@ export default function StakeholdersDirectoryPage({
                     {group.category === "hospital" || group.category === "health" ? (
                       <HeartPulse className="h-5 w-5" />
                     ) : group.category === "funeral" ? (
-                      <Building2 className="h-5 w-5" />
+                      <Flower className="h-5 w-5" />
                     ) : (
                       <FileText className="h-5 w-5" />
                     )}

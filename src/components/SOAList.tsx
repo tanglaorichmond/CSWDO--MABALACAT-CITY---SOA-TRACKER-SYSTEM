@@ -18,7 +18,11 @@ import {
   List,
   Building2,
   HeartPulse,
-  FlaskConical
+  FlaskConical,
+  Flower,
+  X,
+  Download,
+  Printer
 } from "lucide-react";
 import ConfirmationModal from "./ConfirmationModal";
 
@@ -48,6 +52,9 @@ export default function SOAList({
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"date" | "amount" | "name">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [activeInactiveFilter, setActiveInactiveFilter] = useState<"active" | "inactive" | "all">("active");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   
   // Segmented control: by default grouped by stakeholder
   const [viewMode, setViewMode] = useState<"flat" | "grouped">("grouped");
@@ -55,19 +62,29 @@ export default function SOAList({
   // Dynamic category counts
   const categoryCounts = useMemo(() => {
     const counts = {
-      all: soas.length,
+      all: 0,
       hospital: 0,
       laboratories: 0,
       funeral: 0,
     };
     soas.forEach((s) => {
-      const cat = s.stakeholderCategory;
-      if (cat === "hospital") counts.hospital++;
-      else if (cat === "laboratories") counts.laboratories++;
-      else if (cat === "funeral") counts.funeral++;
+      // Respect the activeInactive filter for category counts
+      const statusMatches = statusFilter === "" || s.status === statusFilter;
+      const activeInactiveMatches = statusFilter !== "" ? true : (
+        activeInactiveFilter === "active" ? s.status !== "Released" :
+        activeInactiveFilter === "inactive" ? s.status === "Released" : true
+      );
+      
+      if (statusMatches && activeInactiveMatches) {
+        counts.all++;
+        const cat = s.stakeholderCategory;
+        if (cat === "hospital") counts.hospital++;
+        else if (cat === "laboratories") counts.laboratories++;
+        else if (cat === "funeral") counts.funeral++;
+      }
     });
     return counts;
-  }, [soas]);
+  }, [soas, statusFilter, activeInactiveFilter]);
 
   // Expanded accordion sections state (mapped lowercase name -> boolean)
   const [expandedStakeholders, setExpandedStakeholders] = useState<Record<string, boolean>>({});
@@ -164,8 +181,9 @@ export default function SOAList({
       case 2: return "Verification Check";
       case 3: return "Docket Sortation";
       case 4: return "Checklist Auditing";
-      case 5: return "Proc. to Accounting";
-      case 6: return "Finance releasing pipeline";
+      case 5: return "Forwarded to Accounting";
+      case 6: return "Forwarded to Treasury";
+      case 7: return "Releasing of Check";
       default: return `Step ${step}`;
     }
   };
@@ -190,7 +208,7 @@ export default function SOAList({
       };
     } else if (cat === "funeral") {
       return {
-        icon: <Building2 className="h-5 w-5" />,
+        icon: <Flower className="h-5 w-5" />,
         bgColor: hasDelay ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-amber-50 text-amber-500 border border-amber-100",
         label: "Funeral",
         textColor: "text-amber-500"
@@ -223,7 +241,7 @@ export default function SOAList({
     } else if (cat === "funeral") {
       return (
         <span className="p-1.5 bg-amber-50 border border-amber-100 text-amber-500 rounded-lg shrink-0 flex items-center justify-center">
-          <Building2 className="h-3.5 w-3.5" />
+          <Flower className="h-3.5 w-3.5" />
         </span>
       );
     }
@@ -255,9 +273,18 @@ export default function SOAList({
         
         const matchStatus = statusFilter === "" || soa.status === statusFilter;
         
+        // Exclude Released (completed/inactive) by default or do a strict active/inactive match
+        const matchActiveInactive = statusFilter !== "" ? true : (
+          activeInactiveFilter === "active" ? soa.status !== "Released" :
+          activeInactiveFilter === "inactive" ? soa.status === "Released" : true
+        );
+        
         const matchCategory = categoryFilter === "" || soa.stakeholderCategory === categoryFilter;
         
-        return matchSearch && matchStatus && matchCategory;
+        const matchDate = (!startDate || soa.dateReceived >= startDate) && 
+                          (!endDate || soa.dateReceived <= endDate);
+        
+        return matchSearch && matchStatus && matchActiveInactive && matchCategory && matchDate;
       })
       .sort((a, b) => {
         let comparison = 0;
@@ -270,7 +297,7 @@ export default function SOAList({
         }
         return sortOrder === "asc" ? comparison : -comparison;
       });
-  }, [soas, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder]);
+  }, [soas, searchTerm, statusFilter, activeInactiveFilter, categoryFilter, sortBy, sortOrder, startDate, endDate]);
 
   // Group filtered SOAs by Stakeholders
   const stakeholderGroups = useMemo(() => {
@@ -324,6 +351,240 @@ export default function SOAList({
       setSortBy(type);
       setSortOrder("desc");
     }
+  };
+
+  const escapeCSVString = (val: any) => {
+    if (val === undefined || val === null) return "";
+    const str = String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const handleExportCSV = () => {
+    if (filteredSOAs.length === 0) {
+      showToast("No records to export in the selected range.", "warning");
+      return;
+    }
+    
+    const headers = [
+      "Batch/Control No",
+      "Stakeholder",
+      "Category",
+      "Amount (PHP)",
+      "Date Received",
+      "Current Step",
+      "Status",
+      "Last Updated"
+    ];
+    
+    const csvRows = [headers.join(",")];
+    
+    filteredSOAs.forEach(soa => {
+      const row = [
+        escapeCSVString(soa.batchId || ''),
+        escapeCSVString(soa.stakeholderName || ''),
+        escapeCSVString(soa.stakeholderCategory || ''),
+        escapeCSVString(soa.totalAmount || 0),
+        escapeCSVString(soa.dateReceived || ''),
+        escapeCSVString(`Step ${soa.currentStep} of 7`),
+        escapeCSVString(soa.status || ''),
+        escapeCSVString(soa.updatedAt ? new Date(soa.updatedAt).toLocaleDateString() : '')
+      ];
+      csvRows.push(row.join(","));
+    });
+    
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    const dateStr = (startDate && endDate) 
+      ? `${startDate}_to_${endDate}` 
+      : (startDate ? `from_${startDate}` : (endDate ? `to_${endDate}` : 'all'));
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `SOA_Tracker_Report_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("CSV exported successfully!", "success");
+  };
+
+  const handlePrint = () => {
+    if (filteredSOAs.length === 0) {
+      showToast("No records to print in the selected range.", "warning");
+      return;
+    }
+    
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Pop-up blocked. Please allow popups to print report.", "error");
+      return;
+    }
+    
+    const dateRangeStr = (startDate || endDate) 
+      ? `Date Range: ${startDate || 'Anytime'} to ${endDate || 'Anytime'}` 
+      : "All Records";
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>SOA Tracker Report - CSWDO Mabalacat City</title>
+          <style>
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              color: #1e293b;
+              padding: 40px;
+              margin: 0;
+            }
+            .header {
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+              font-weight: 800;
+              color: #0f172a;
+              text-transform: uppercase;
+              letter-spacing: -0.025em;
+            }
+            .header p {
+              margin: 4px 0 0 0;
+              font-size: 11px;
+              color: #64748b;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+            }
+            .meta-info {
+              font-size: 13px;
+              color: #475569;
+              margin-bottom: 24px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              padding: 12px 16px;
+              border-radius: 8px;
+              display: flex;
+              justify-content: space-between;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f1f5f9;
+              color: #334155;
+              font-weight: 700;
+              text-align: left;
+              padding: 10px 12px;
+              border-bottom: 1px solid #cbd5e1;
+              text-transform: uppercase;
+              font-size: 10px;
+              letter-spacing: 0.05em;
+            }
+            td {
+              padding: 10px 12px;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            tr:nth-child(even) td {
+              background-color: #f8fafc;
+            }
+            .footer {
+              margin-top: 40px;
+              font-size: 10px;
+              color: #94a3b8;
+              text-align: center;
+              border-top: 1px dashed #cbd5e1;
+              padding-top: 16px;
+            }
+            .amount {
+              font-family: monospace;
+              font-weight: 700;
+              text-align: right;
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 700;
+              font-size: 9px;
+              text-transform: uppercase;
+            }
+            .badge-released { background-color: #dcfce7; color: #15803d; }
+            .badge-issue { background-color: #fee2e2; color: #b91c1c; }
+            .badge-pending { background-color: #fef9c3; color: #a16207; }
+            .badge-step { background-color: #e0f2fe; color: #0369a1; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>SOA Tracker Report</h1>
+              <p>CSWDO Mabalacat City</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="margin: 0; font-size: 12px; color: #475569;">Generated on: ${new Date().toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <div class="meta-info">
+            <div><strong>Date Range Filter:</strong> ${dateRangeStr}</div>
+            <div><strong>Total Statements:</strong> ${filteredSOAs.length}</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 15%">Batch ID</th>
+                <th style="width: 25%">Stakeholder Name</th>
+                <th style="width: 15%">Category</th>
+                <th style="width: 15%; text-align: right;">Amount (PHP)</th>
+                <th style="width: 12%">Date Received</th>
+                <th style="width: 10%">Current Step</th>
+                <th style="width: 8%">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSOAs.map(soa => {
+                let badgeClass = "badge-step";
+                if (soa.status === "Released") badgeClass = "badge-released";
+                else if (soa.status === "With Issue") badgeClass = "badge-issue";
+                else if (soa.status === "Pending") badgeClass = "badge-pending";
+
+                return `
+                  <tr>
+                    <td><strong>${soa.batchId || 'N/A'}</strong></td>
+                    <td>${soa.stakeholderName || ''}</td>
+                    <td><span style="text-transform: capitalize;">${soa.stakeholderCategory || ''}</span></td>
+                    <td class="amount">₱${(soa.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>${soa.dateReceived || ''}</td>
+                    <td>Step ${soa.currentStep} of 7</td>
+                    <td><span class="status-badge ${badgeClass}">${soa.status || ''}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <p>CONFIDENTIAL &amp; PROPRIETARY — CITY SOCIAL WELFARE AND DEVELOPMENT OFFICE (CSWDO), MABALACAT CITY</p>
+            <p>This is a computer-generated report. End of document.</p>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
@@ -457,7 +718,7 @@ export default function SOAList({
       </div>
 
       {/* Inputs Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-400" />
@@ -489,6 +750,50 @@ export default function SOAList({
             <option value="For Releasing">Step 6: For Releasing</option>
             <option value="Released">Step 6: Fully Released</option>
           </select>
+        </div>
+
+        {/* Active vs Inactive (Released) Filter Segment */}
+        <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold h-[48px] items-center border border-slate-200/40 select-none">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveInactiveFilter("active");
+              if (statusFilter === "Released") setStatusFilter("");
+            }}
+            className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer h-[38px] ${
+              activeInactiveFilter === "active"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-200/50 font-extrabold"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="truncate">Active Only</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveInactiveFilter("inactive");
+            }}
+            className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer h-[38px] ${
+              activeInactiveFilter === "inactive"
+                ? "bg-white text-rose-600 shadow-sm border border-slate-200/50 font-extrabold"
+                : "text-slate-500 hover:text-rose-600"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-rose-400 shrink-0" />
+            <span className="truncate">Released</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveInactiveFilter("all")}
+            className={`flex-1 py-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer h-[38px] ${
+              activeInactiveFilter === "all"
+                ? "bg-white text-slate-800 shadow-sm border border-slate-200/50 font-extrabold"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span className="truncate font-bold">Show All</span>
+          </button>
         </div>
 
         {/* Sorters Selection */}
@@ -526,6 +831,77 @@ export default function SOAList({
             <span>Stakeholder</span>
             <ArrowUpDown className="h-3 w-3" />
           </button>
+        </div>
+      </div>
+
+      {/* Date Range Filter Row */}
+      <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 mt-3">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-blue-500/10 text-blue-600 p-2 rounded-xl border border-blue-500/10 shrink-0">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-slate-800">Filter By Date Received</h4>
+            <p className="text-[10px] text-slate-400 font-medium font-sans">Filter records matching specific Statements of Account receipt dates.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 shadow-sm cursor-pointer"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 shadow-sm cursor-pointer"
+            />
+          </div>
+
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="px-3.5 py-2.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
+              title="Clear date filter"
+            >
+              <X className="h-3.5 w-3.5 shrink-0" />
+              <span>Clear Date</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 border-l border-slate-200/80 pl-1 md:pl-3 md:ml-1 shrink-0">
+            <button
+              onClick={handleExportCSV}
+              className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100/80 rounded-xl px-3 py-2.5 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+              title="Export filtered records to CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">CSV</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/60 rounded-xl px-3 py-2.5 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+              title="Print filtered report"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Print Report</span>
+              <span className="sm:hidden">Print</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -645,7 +1021,7 @@ export default function SOAList({
                       <td className="px-6 py-4.5 whitespace-nowrap">
                         <div className="w-32">
                           <div className="flex justify-between text-[9px] text-slate-400 font-black mb-1 uppercase">
-                            <span>Step {soa.currentStep}/6</span>
+                            <span>Step {soa.currentStep}/7</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1">
                             <div 
@@ -656,7 +1032,7 @@ export default function SOAList({
                                   ? "bg-emerald-500" 
                                   : "bg-blue-600"
                               }`}
-                              style={{ width: `${(soa.currentStep / 6) * 100}%` }}
+                              style={{ width: `${(soa.currentStep / 7) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -732,14 +1108,14 @@ export default function SOAList({
                   <div className="pt-4 border-t border-slate-100">
                     <div className="flex justify-between text-[9px] font-black text-slate-400 items-center uppercase tracking-widest mb-1.5">
                       <span>Pipeline Flow Progress</span>
-                      <span className="text-blue-600">STEP {soa.currentStep}/6</span>
+                      <span className="text-blue-600">STEP {soa.currentStep}/7</span>
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-700 ${
                           soa.status === "With Issue" ? "bg-rose-500" : soa.status === "Released" ? "bg-emerald-500" : "bg-blue-600"
                         }`}
-                        style={{ width: `${(soa.currentStep / 6) * 100}%` }}
+                        style={{ width: `${(soa.currentStep / 7) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -881,7 +1257,7 @@ export default function SOAList({
                               <td className="px-5 py-3.5 whitespace-nowrap">
                                 <div className="w-28">
                                   <div className="flex justify-between text-[9px] text-slate-400 font-bold mb-0.5">
-                                    <span>Step {soa.currentStep} of 6</span>
+                                    <span>Step {soa.currentStep} of 7</span>
                                     <span>{getStepLabel(soa.currentStep)}</span>
                                   </div>
                                   <div className="w-full bg-slate-100 rounded-full h-1">
@@ -893,7 +1269,7 @@ export default function SOAList({
                                           ? "bg-emerald-500" 
                                           : "bg-blue-600"
                                       }`}
-                                      style={{ width: `${(soa.currentStep / 6) * 100}%` }}
+                                      style={{ width: `${(soa.currentStep / 7) * 100}%` }}
                                     />
                                   </div>
                                 </div>

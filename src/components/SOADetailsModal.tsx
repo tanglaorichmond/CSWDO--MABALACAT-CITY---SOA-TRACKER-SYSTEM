@@ -207,8 +207,9 @@ export default function SOADetailsModal({
       case 2: return "Verification Check";
       case 3: return "Docket Sortation";
       case 4: return "Checklist Auditing";
-      case 5: return "Proc. to Accounting";
-      case 6: return "Finance releasing pipeline";
+      case 5: return "Forwarded to Accounting";
+      case 6: return "Forwarded to Treasury";
+      case 7: return "Releasing of Check";
       default: return `Step ${step}`;
     }
   };
@@ -338,7 +339,7 @@ export default function SOADetailsModal({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-400 uppercase">Current Phase</span>
                     <span className="text-xs bg-slate-900 text-white font-extrabold px-3 py-1 rounded-full">
-                      Step {soa.currentStep} of 6 - {soa.status === "With Issue" ? "Issue Alert" : getStepLabel(soa.currentStep)}
+                      Step {soa.currentStep} of 7 - {soa.status === "With Issue" ? "Issue Alert" : getStepLabel(soa.currentStep)}
                     </span>
                   </div>
 
@@ -526,19 +527,19 @@ export default function SOADetailsModal({
                     </div>
                   )}
 
-                  {/* STEP 5: ACTION TO ACCOUNTING (when status is Checklist Completed) */}
-                  {soa.currentStep === 5 && soa.status === "Checklist Completed" && (
+                  {/* STEP 5: ACTION TO ACCOUNTING (when status is Forwarded to Accounting) */}
+                  {soa.currentStep === 5 && (soa.status === "Forwarded to Accounting" || soa.status === "Checklist Completed") && (
                     <div className="space-y-4">
                       <div>
-                        <h5 className="text-sm font-bold text-slate-900">Step 5: Process to Accounting Department</h5>
-                        <p className="text-xs text-slate-500 mt-1">Review the final folder packet. Approve to forward details to local government Accounting.</p>
+                        <h5 className="text-sm font-bold text-slate-900">Step 5: Forwarded to Accounting</h5>
+                        <p className="text-xs text-slate-500 mt-1">Review statement details and authorize forwarding the folder packet to Treasury.</p>
                       </div>
 
                       <div className="space-y-3">
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Auditors Final Release Notes</label>
+                          <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Accounting Progress Notes</label>
                           <textarea
-                            placeholder="Provide final audit summary note..."
+                            placeholder="Provide details about accounting approval..."
                             value={stepNotes}
                             onChange={(e) => setStepNotes(e.target.value)}
                             className="w-full text-xs rounded-xl border border-slate-200 p-3 bg-slate-50/50 focus:outline-none"
@@ -547,87 +548,77 @@ export default function SOADetailsModal({
                         </div>
 
                         <button
-                          onClick={handleProcessSubmit}
+                          onClick={() => handleManualStatusSubmit("Forwarded to Treasury")}
                           disabled={isSubmitting}
-                          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-1 shadow-md shadow-blue-500/10 transition-colors"
+                          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1 shadow-md shadow-blue-500/10 transition-colors cursor-pointer"
                         >
                           <Send className="h-4 w-4" />
-                          <span>Approve Processing to Accounting</span>
+                          <span>Forward to Treasury</span>
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* STEP 6: MANUAL STATUS MOVEMENTS */}
-                  {soa.currentStep === 6 && (
+                  {/* STEP 6: FORWARDED TO TREASURY */}
+                  {soa.currentStep === 6 && soa.status === "Forwarded to Treasury" && (
                     <div className="space-y-4">
                       <div>
-                        <h5 className="text-sm font-bold text-slate-900">Step 6: Treasury &amp; Disbursal Pipeline</h5>
-                        <p className="text-xs text-slate-500 mt-1">Track external movements inside municipal accounting and treasury cabinets. Manually promote tracking status as the folder progresses.</p>
+                        <h5 className="text-sm font-bold text-slate-900">Step 6: Forwarded to Treasury</h5>
+                        <p className="text-xs text-slate-500 mt-1">Review statement details. Authorize releasing of the check within Treasury.</p>
                       </div>
 
-                      <div className="space-y-3.5 bg-slate-50/50 p-4 border border-slate-100 rounded-xl space-y-3">
-                        {/* Status progression triggers */}
-                        <div className="grid grid-cols-2 gap-3.5">
-                          <button
-                            onClick={() => handleManualStatusSubmit("Forwarded to Accounting")}
-                            disabled={isSubmitting}
-                            className={`p-3 rounded-xl border-2 text-xs font-bold text-center transition-all ${
-                              soa.status === "Forwarded to Accounting" 
-                                ? "bg-slate-900 text-white border-slate-900 shadow" 
-                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                          >
-                            Mark: Forwarded to Accounting
-                          </button>
-
-                          <button
-                            onClick={() => handleManualStatusSubmit("Forwarded to Treasury")}
-                            disabled={isSubmitting}
-                            className={`p-3 rounded-xl border-2 text-xs font-bold text-center transition-all ${
-                              soa.status === "Forwarded to Treasury" 
-                                ? "bg-slate-900 text-white border-slate-900 shadow" 
-                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                          >
-                            Mark: Forwarded to Treasury
-                          </button>
-
-                          <button
-                            onClick={() => handleManualStatusSubmit("For Releasing")}
-                            disabled={isSubmitting}
-                            className={`p-3 rounded-xl border-2 text-xs font-bold text-center transition-all ${
-                              soa.status === "For Releasing" 
-                                ? "bg-slate-900 text-white border-slate-900 shadow" 
-                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
-                            }`}
-                          >
-                            Mark: For Releasing
-                          </button>
-
-                          <button
-                            onClick={() => handleManualStatusSubmit("Released")}
-                            disabled={isSubmitting}
-                            className={`p-3 rounded-xl border-2 text-xs font-bold text-center transition-all ${
-                              soa.status === "Released" 
-                                ? "bg-emerald-600 text-white border-emerald-600 shadow" 
-                                : "bg-white border-slate-200 text-slate-700 hover:border-emerald-300"
-                            }`}
-                          >
-                            Mark: Fully Released (Done)
-                          </button>
-                        </div>
-
+                      <div className="space-y-3">
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">State Update Notes (Mandatory for transparency)</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Check number issued, folder dispatched, released to client"
+                          <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Treasury Verification Notes</label>
+                          <textarea
+                            placeholder="Provide details about treasury validation..."
                             value={stepNotes}
                             onChange={(e) => setStepNotes(e.target.value)}
-                            className="w-full text-xs rounded-xl border border-slate-200 p-2.5 bg-white shadow-inner focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full text-xs rounded-xl border border-slate-200 p-3 bg-slate-50/50 focus:outline-none"
+                            rows={3}
                           />
                         </div>
+
+                        <button
+                          onClick={() => handleManualStatusSubmit("For Releasing")}
+                          disabled={isSubmitting}
+                          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1 shadow-md shadow-blue-500/10 transition-colors cursor-pointer"
+                        >
+                          <Send className="h-4 w-4" />
+                          <span>Advance to Check Releasing</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 7: RELEASING OF CHECK IN TREASURY */}
+                  {soa.currentStep === 7 && soa.status === "For Releasing" && (
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="text-sm font-bold text-slate-900">Step 7: Releasing of Check in Treasury</h5>
+                        <p className="text-xs text-slate-500 mt-1">The check is prepared in Treasury. Complete the disbursal pipeline by marking the check as fully released.</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Disbursal &amp; Release Notes</label>
+                          <textarea
+                            placeholder="Provide release details (e.g., check number, beneficiary name, signature details)..."
+                            value={stepNotes}
+                            onChange={(e) => setStepNotes(e.target.value)}
+                            className="w-full text-xs rounded-xl border border-slate-200 p-3 bg-slate-50/50 focus:outline-none"
+                            rows={3}
+                          />
+                        </div>
+
+                        <button
+                          onClick={() => handleManualStatusSubmit("Released")}
+                          disabled={isSubmitting}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1 shadow-md shadow-emerald-500/10 transition-colors cursor-pointer"
+                        >
+                          <Check className="h-4 w-4" />
+                          <span>Mark Check as Fully Released</span>
+                        </button>
                       </div>
                     </div>
                   )}

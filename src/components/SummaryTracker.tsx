@@ -24,7 +24,12 @@ import {
   ChevronDown,
   Plus,
   Minus,
-  AlertCircle
+  Trash2,
+  Flower,
+  AlertCircle,
+  X,
+  Download,
+  Printer
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -53,6 +58,270 @@ export default function SummaryTracker({
   setSelectedStakeholderName,
   setSelectedViewType
 }: SummaryTrackerProps) {
+
+  const [showAllGlobal, setShowAllGlobal] = useState(false);
+  const [expandedBatchIds, setExpandedBatchIds] = useState<string[]>([]);
+  const [activeReleasedFilter, setActiveReleasedFilter] = useState<"active" | "released" | "all">("active");
+  const [summaryStartDate, setSummaryStartDate] = useState("");
+  const [summaryEndDate, setSummaryEndDate] = useState("");
+
+  const escapeCSVString = (val: any) => {
+    if (val === undefined || val === null) return "";
+    const str = String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const handleExportRoadmapCSV = () => {
+    if (filteredSoasForFeed.length === 0) {
+      alert("No pipeline records to export in the selected range.");
+      return;
+    }
+    
+    const headers = [
+      "Batch Number",
+      "Stakeholder",
+      "Category",
+      "Current Step",
+      "Stage Progress",
+      "Stage Status",
+      "Amount (PHP)",
+      "Date Received",
+      "Last Updated"
+    ];
+    
+    const csvRows = [headers.join(",")];
+    
+    filteredSoasForFeed.forEach(s => {
+      const stepNames = [
+        "Receiving of Documents",
+        "Verification & Posting",
+        "Sorting & Compilation",
+        "Document Processing (SLA)",
+        "Review & Approval",
+        "Payment Processing",
+        "Release of Checks"
+      ];
+      const stageName = stepNames[s.currentStep - 1] || `Step ${s.currentStep}`;
+      
+      const row = [
+        escapeCSVString(s.batchId || s.batchNumber || 'N/A'),
+        escapeCSVString(s.stakeholderName),
+        escapeCSVString(s.stakeholderCategory),
+        escapeCSVString(`Step ${s.currentStep} of 7`),
+        escapeCSVString(stageName),
+        escapeCSVString(s.status),
+        escapeCSVString(s.totalAmount || 0),
+        escapeCSVString(s.dateReceived),
+        escapeCSVString(s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : '')
+      ];
+      csvRows.push(row.join(","));
+    });
+    
+    const csvContent = "\uFEFF" + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    const dateStr = (summaryStartDate && summaryEndDate) 
+      ? `${summaryStartDate}_to_${summaryEndDate}` 
+      : (summaryStartDate ? `from_${summaryStartDate}` : (summaryEndDate ? `to_${summaryEndDate}` : 'all'));
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Roadmap_Tracker_Report_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintRoadmap = () => {
+    if (filteredSoasForFeed.length === 0) {
+      alert("No pipeline records to print in the selected range.");
+      return;
+    }
+    
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Pop-up blocked. Please allow popups to print.");
+      return;
+    }
+    
+    const dateRangeStr = (summaryStartDate || summaryEndDate) 
+      ? `Date Range: ${summaryStartDate || 'Anytime'} to ${summaryEndDate || 'Anytime'}` 
+      : "All Records";
+      
+    const stepNames = [
+      "Receiving of Documents",
+      "Verification & Posting",
+      "Sorting & Compilation",
+      "Document Processing (SLA)",
+      "Review & Approval",
+      "Payment Processing",
+      "Release of Checks"
+    ];
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>CSWDO Roadmap Tracker Report</title>
+          <style>
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              color: #1e293b;
+              padding: 40px;
+              margin: 0;
+            }
+            .header {
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+              font-weight: 800;
+              color: #0f172a;
+              text-transform: uppercase;
+              letter-spacing: -0.025em;
+            }
+            .header p {
+              margin: 4px 0 0 0;
+              font-size: 11px;
+              color: #3b82f6;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+            }
+            .meta-info {
+              font-size: 13px;
+              color: #475569;
+              margin-bottom: 24px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              padding: 12px 16px;
+              border-radius: 8px;
+              display: flex;
+              justify-content: space-between;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f1f5f9;
+              color: #334155;
+              font-weight: 700;
+              text-align: left;
+              padding: 10px 12px;
+              border-bottom: 1px solid #cbd5e1;
+              text-transform: uppercase;
+              font-size: 10px;
+              letter-spacing: 0.05em;
+            }
+            td {
+              padding: 11px 12px;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            tr:nth-child(even) td {
+              background-color: #f8fafc;
+            }
+            .footer {
+              margin-top: 40px;
+              font-size: 10px;
+              color: #94a3b8;
+              text-align: center;
+              border-top: 1px dashed #cbd5e1;
+              padding-top: 16px;
+            }
+            .amount {
+              font-family: monospace;
+              font-weight: 700;
+              text-align: right;
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 700;
+              font-size: 9px;
+              text-transform: uppercase;
+            }
+            .badge-released { background-color: #dcfce7; color: #15803d; }
+            .badge-issue { background-color: #fee2e2; color: #b91c1c; }
+            .badge-pending { background-color: #fef9c3; color: #a16207; }
+            .badge-step { background-color: #e0f2fe; color: #0369a1; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>CSWDO Roadmap Tracker Report</h1>
+              <p>MUNICIPAL ROAD MAP PIPELINE STATUS</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="margin: 0; font-size: 12px; color: #475569;">Generated on: ${new Date().toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <div class="meta-info">
+            <div><strong>SLA Filter Period:</strong> ${dateRangeStr}</div>
+            <div><strong>Active Pipelines:</strong> ${filteredSoasForFeed.length}</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 15%">Batch Code</th>
+                <th style="width: 20%">Stakeholder</th>
+                <th style="width: 12%">Category</th>
+                <th style="width: 25%">SLA Current Step Names</th>
+                <th style="width: 13%; text-align: right;">Amount (PHP)</th>
+                <th style="width: 10%">Received Date</th>
+                <th style="width: 5%">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredSoasForFeed.map(s => {
+                let badgeClass = "badge-step";
+                if (s.status === "Released") badgeClass = "badge-released";
+                else if (s.status === "With Issue") badgeClass = "badge-issue";
+                else if (s.status === "Pending") badgeClass = "badge-pending";
+
+                const stepTxt = stepNames[s.currentStep - 1] || `Step ${s.currentStep}`;
+
+                return `
+                  <tr>
+                    <td><strong>${s.batchId || s.batchNumber || 'N/A'}</strong></td>
+                    <td>${s.stakeholderName}</td>
+                    <td><span style="text-transform: capitalize;">${s.stakeholderCategory || ''}</span></td>
+                    <td><em>Step ${s.currentStep} of 7:</em> ${stepTxt}</td>
+                    <td class="amount">₱${(s.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>${s.dateReceived || ''}</td>
+                    <td><span class="status-badge ${badgeClass}">${s.status || ''}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <p>CONFIDENTIAL &amp; PROPRIETARY — CITY SOCIAL WELFARE AND DEVELOPMENT OFFICE (CSWDO), MABALACAT CITY</p>
+            <p>Mabalacat City Road Map Tracker Overview Report. End of document.</p>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const isOverdue = (doc: SOADoc) => {
     if (doc.status === "Released") return false;
@@ -122,7 +391,7 @@ export default function SummaryTracker({
     } else if (cat === "funeral") {
       return (
         <span className="p-1.5 bg-amber-50 border border-amber-100 text-amber-500 rounded-lg shrink-0 flex items-center justify-center">
-          <Building2 className="h-3.5 w-3.5" />
+          <Flower className="h-3.5 w-3.5" />
         </span>
       );
     }
@@ -151,7 +420,17 @@ export default function SummaryTracker({
       };
     });
 
-    soas.forEach(soa => {
+    // Filter SOAs by Active / Released state and Date received range
+    const filteredSoas = soas.filter(s => {
+      if (activeReleasedFilter === "active" && s.status === "Released") return false;
+      if (activeReleasedFilter === "released" && s.status !== "Released") return false;
+      
+      const matchDate = (!summaryStartDate || s.dateReceived >= summaryStartDate) && 
+                        (!summaryEndDate || s.dateReceived <= summaryEndDate);
+      return matchDate;
+    });
+
+    filteredSoas.forEach(soa => {
       const name = soa.stakeholderName;
       
       // If not in grouped (unregistered), add it temporarily
@@ -191,12 +470,21 @@ export default function SummaryTracker({
       }
     });
 
+    let list = Object.values(grouped);
+    if (activeReleasedFilter !== "all") {
+      list = list.filter(g => g.docCount > 0);
+    }
+
     // Sort alphabetically by name
-    return Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
-  }, [soas, stakeholders]);
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [soas, stakeholders, activeReleasedFilter, summaryStartDate, summaryEndDate]);
 
   const groupedStakeholders = useMemo(() => {
-    const sorted = [...stakeholders].sort((a, b) => a.name.localeCompare(b.name));
+    const allowedNames = new Set(categorizedData.map(g => g.name));
+    
+    // Filter stakeholders that actually exist in allowedNames
+    const filteredStakeholders = stakeholders.filter(s => allowedNames.has(s.name));
+    const sorted = [...filteredStakeholders].sort((a, b) => a.name.localeCompare(b.name));
     
     return {
       hospitals: sorted.filter(s => s.category === 'hospital' || s.category === 'health'),
@@ -211,7 +499,18 @@ export default function SummaryTracker({
         s.category !== 'lab'
       )
     };
-  }, [stakeholders]);
+  }, [stakeholders, categorizedData]);
+
+  const filteredSoasForFeed = useMemo(() => {
+    return soas.filter(s => {
+      if (activeReleasedFilter === "active" && s.status === "Released") return false;
+      if (activeReleasedFilter === "released" && s.status !== "Released") return false;
+      
+      const matchDate = (!summaryStartDate || s.dateReceived >= summaryStartDate) && 
+                        (!summaryEndDate || s.dateReceived <= summaryEndDate);
+      return matchDate;
+    });
+  }, [soas, activeReleasedFilter, summaryStartDate, summaryEndDate]);
 
   // Find currently selected SOA
   const selectedSOA = useMemo(() => {
@@ -354,17 +653,29 @@ export default function SummaryTracker({
     {
       index: 5,
       title: "Accounting",
-      desc: "Approved sheets moved to CSWDO Accounting team for invoice processing.",
+      desc: "Voucher details approved and forwarded to Accounting Department for processing.",
       badge: "ACCOUNTED",
       icon: FileText,
       getLog: (soa: SOADoc) => ({
         date: soa.processingDate || soa.updatedAt,
-        notes: soa.processingNotes || "Approved voucher compiled into accounting processing.",
-        badge: "Accounting Clearance"
+        notes: soa.processingNotes || "Document successfully forwarded and registered inside Accounting.",
+        badge: "Accounting Stage"
       })
     },
     {
       index: 6,
+      title: "Treasury",
+      desc: "Statements forwarded to Treasury for check preparation and scheduling.",
+      badge: "TREASURY",
+      icon: Building2,
+      getLog: (soa: SOADoc) => ({
+        date: soa.manualStatusDate || soa.updatedAt,
+        notes: soa.manualStatusNotes || "Document successfully forwarded and registered inside Treasury.",
+        badge: "Treasury Stage"
+      })
+    },
+    {
+      index: 7,
       title: "Release",
       desc: "Statement is cleared, finalized, and processed towards Release & Treasury payout.",
       badge: "RELEASED",
@@ -377,9 +688,6 @@ export default function SummaryTracker({
     }
   ];
 
-  const [showAllGlobal, setShowAllGlobal] = useState(false);
-  const [expandedBatchIds, setExpandedBatchIds] = useState<string[]>([]);
-
   const toggleBatchExpansion = (id: string) => {
     setExpandedBatchIds(prev => 
       prev.includes(id) ? [] : [id]
@@ -389,7 +697,7 @@ export default function SummaryTracker({
   const renderRoadmapStepper = (doc: SOADoc, isCompact: boolean = false) => {
     const isIssue = doc.status === "With Issue";
     const overdue = isOverdue(doc);
-    const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 5) * 85));
+    const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 6) * 85));
 
     return (
       <div className={`relative pt-2 pb-1 select-none overflow-x-auto hide-scrollbar ${isCompact ? "px-0" : "px-0"}`}>
@@ -540,10 +848,67 @@ export default function SummaryTracker({
             SOA TRACKING PIPELINE
           </h2>
           
+          {/* Pipeline Status Mode Selector */}
+          <div className="flex flex-col gap-1.5 w-full sm:w-80 mt-4">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 select-none">1. Status Pipeline Filter</span>
+            <div className="flex bg-slate-950/60 p-1 rounded-xl text-[10px] sm:text-xs font-bold items-center border border-slate-800/80 select-none gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveReleasedFilter("active");
+                  setSelectedStakeholderName(null);
+                  setSelectedViewType("batch");
+                }}
+                className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer h-[32px] ${
+                  activeReleasedFilter === "active"
+                    ? "bg-slate-800/80 text-emerald-400 border border-slate-700/80 font-extrabold shadow-md"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate">Active Only</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveReleasedFilter("released");
+                  setSelectedStakeholderName(null);
+                  setSelectedViewType("batch");
+                }}
+                className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer h-[32px] ${
+                  activeReleasedFilter === "released"
+                    ? "bg-slate-800/80 text-blue-400 border border-slate-700/80 font-extrabold shadow-md"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+                <span className="truncate">Released</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveReleasedFilter("all");
+                  setSelectedStakeholderName(null);
+                  setSelectedViewType("batch");
+                }}
+                className={`flex-1 py-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer h-[32px] ${
+                  activeReleasedFilter === "all"
+                    ? "bg-slate-800/80 text-white border border-slate-700/80 font-extrabold shadow-md"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <span className="truncate">Show All</span>
+              </button>
+            </div>
+          </div>
+
           {/* Stakeholder Selector */}
-          <div className="relative mt-2">
+          <div className="flex flex-col gap-1.5 w-full sm:w-80 mt-3 relative">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 select-none">2. Select Stakeholder Partner</span>
               <select 
-                className="bg-slate-950/80 backdrop-blur-md border border-slate-700 text-white text-[11px] sm:text-xs font-bold p-3 rounded-xl w-full sm:w-80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
+                className="bg-slate-950/80 backdrop-blur-md border border-slate-700 text-white text-[11px] sm:text-xs font-bold p-3 rounded-xl w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
                 value={selectedStakeholderName || ""}
                 onChange={(e) => {
                     const name = e.target.value;
@@ -616,6 +981,77 @@ export default function SummaryTracker({
         </div>
       </div>
 
+      {/* Pipeline Date Filter Row */}
+      <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm select-none">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500/10 text-blue-600 p-2.5 rounded-xl border border-blue-500/10 shrink-0">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Pipeline Date Filter</h4>
+            <p className="text-[10px] text-slate-400 font-medium font-sans">Filter the entire roadmap tracking workflow by Statement received date.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none">From:</span>
+            <input
+              type="date"
+              value={summaryStartDate}
+              onChange={(e) => setSummaryStartDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 shadow-sm cursor-pointer"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none">To:</span>
+            <input
+              type="date"
+              value={summaryEndDate}
+              onChange={(e) => setSummaryEndDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 shadow-sm cursor-pointer"
+            />
+          </div>
+
+          {(summaryStartDate || summaryEndDate) && (
+            <button
+              onClick={() => {
+                setSummaryStartDate("");
+                setSummaryEndDate("");
+              }}
+              className="px-3.5 py-2.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0"
+              title="Clear date filter"
+            >
+              <X className="h-3.5 w-3.5 shrink-0" />
+              <span>Clear Date</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 border-l border-slate-200/80 pl-1 md:pl-3 md:ml-1 shrink-0">
+            <button
+              onClick={handleExportRoadmapCSV}
+              className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100/80 rounded-xl px-3 py-2.5 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+              title="Export filtered records to CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">CSV</span>
+            </button>
+
+            <button
+              onClick={handlePrintRoadmap}
+              className="bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/60 rounded-xl px-3 py-2.5 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+              title="Print filtered report"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Print Roadmap</span>
+              <span className="sm:hidden">Print</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Grid: Real-time Roadmap Tracking */}
       <div className="grid grid-cols-1 gap-8 items-start">
         
@@ -653,7 +1089,7 @@ export default function SummaryTracker({
                       .map((doc) => {
                       const isComplete = doc.status === "Released";
                       const isIssue = doc.status === "With Issue";
-                      const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 5) * 100));
+                      const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 6) * 100));
                       const isExpanded = expandedBatchIds.includes(doc.id);
                       const overdue = isOverdue(doc);
                       
@@ -743,27 +1179,27 @@ export default function SummaryTracker({
               <div className="space-y-8">
                 {/* Global Active Missions Feed */}
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                       <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
-                       Live Tactical Tracking Feed
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Real-time status movement across all municipal partners</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="text-[10px] font-black text-slate-600 tracking-wider font-mono uppercase">{stats.inProgressCount} Assets in Transit</span>
-                  </div>
+                   <div className="space-y-1">
+                     <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
+                        Live Tactical Tracking Feed
+                     </h4>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Real-time status movement across all municipal partners</p>
+                   </div>
+                   <div className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                     <span className="text-[10px] font-black text-slate-600 tracking-wider font-mono uppercase">{filteredSoasForFeed.length} {activeReleasedFilter === "active" ? "Active" : activeReleasedFilter === "released" ? "Released" : "Total"} Assets</span>
+                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {soas
+                  {filteredSoasForFeed
                     .sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                     .slice(0, showAllGlobal ? undefined : 3)
                     .map((doc) => {
                     const isIssue = doc.status === "With Issue";
                     const overdue = isOverdue(doc);
-                    const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 5) * 100));
+                    const progressPct = Math.min(100, Math.max(0, ((doc.currentStep - 1) / 6) * 100));
                     
                     return (
                       <motion.div 
@@ -796,7 +1232,7 @@ export default function SummaryTracker({
                           <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest shrink-0 ${
                              isIssue ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
                           }`}>
-                            {doc.status}
+                             {doc.status}
                           </span>
                         </div>
                         
@@ -812,22 +1248,26 @@ export default function SummaryTracker({
                   })}
                 </div>
 
-                {soas.length > 3 && (
+                {filteredSoasForFeed.length > 3 && (
                   <button 
                     onClick={() => setShowAllGlobal(!showAllGlobal)}
                     className="w-full py-4 border border-dashed border-slate-200 rounded-3xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-all bg-slate-50/30 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {showAllGlobal ? <ChevronDown className="h-3.5 w-3.5 rotate-180 transition-transform" /> : <Plus className="h-3.5 w-3.5" />}
-                    {showAllGlobal ? "Minimize archives" : `Expand to view ${soas.length - 3} more statements`}
+                    {showAllGlobal ? "Minimize archives" : `Expand to view ${filteredSoasForFeed.length - 3} more statements`}
                   </button>
                 )}
 
-                {soas.filter(s => s.status !== "Released").length === 0 && (
+                {filteredSoasForFeed.length === 0 && (
                   <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
                     <Compass className="h-12 w-12 text-slate-350 mx-auto stroke-1 animate-pulse" />
-                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mt-4">No Active Tracking Assets Found</h4>
+                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mt-4">No Matching Tracking Assets Found</h4>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto mt-2 leading-relaxed">
-                      All Statement of Accounts are currently at rest. When fresh documentation is registered, it will appear here for live movement monitoring.
+                      {activeReleasedFilter === "active" 
+                        ? "All Statement of Accounts are currently completed or released." 
+                        : activeReleasedFilter === "released" 
+                          ? "No completed or released Statement of Accounts registered yet."
+                          : "No Statement of Accounts registered yet."}
                     </p>
                   </div>
                 )}

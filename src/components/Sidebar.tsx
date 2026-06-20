@@ -10,7 +10,8 @@ import {
   Compass,
   Workflow,
   BookUser,
-  Settings
+  Settings,
+  TrendingUp
 } from "lucide-react";
 import { UserProfile, SLASettings } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -64,6 +65,12 @@ export default function Sidebar({
       id: "summary",
       label: "Roadmap Tracker",
       icon: Workflow,
+      roles: ["System Administrator", "Admin", "User", "Guest"]
+    },
+    {
+      id: "financial-report",
+      label: "Stakeholders Report",
+      icon: TrendingUp,
       roles: ["System Administrator", "Admin", "User", "Guest"]
     },
     {
