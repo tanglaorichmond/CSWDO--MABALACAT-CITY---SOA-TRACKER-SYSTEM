@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with organizational role and position details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID from Google Auth" },
+        "email": { "type": "string", "description": "Google Accout email address" },
+        "displayName": { "type": "string", "description": "Full name of the user" },
+        "position": { "type": "string", "description": "Job position in CSWDO Mabalacat City" },
+        "role": { "type": "string", "enum": ["System Administrator", "User", "Guest"], "description": "Access level" },
+        "canEdit": { "type": "boolean", "description": "Whether the user can edit or advance track movements" },
+        "canDelete": { "type": "boolean", "description": "Whether the user can delete tracker records" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "position", "role"]
+    },
+    "StatementOfAccount": {
+      "title": "Statement Of Account",
+      "description": "Represents an SOA document and its tracking stages within the CSWDO Mabalacat City Office.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dateReceived": { "type": "string", "format": "date" },
+        "stakeholderName": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "submissionOfSoa": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Submitted",
+            "With Issue",
+            "Verified",
+            "Sorted",
+            "Checklist Completed",
+            "Processing to Accounting",
+            "Forwarded to Accounting",
+            "Forwarded to Treasury",
+            "For Releasing",
+            "Released"
+          ]
+        },
+        "verificationIssueDetails": { "type": "string" },
+        "verificationNotes": { "type": "string" },
+        "sortationNotes": { "type": "string" },
+        "checklist": { "type": "object" },
+        "hasIssue": { "type": "boolean" },
+        "dateResetCount": { "type": "number" },
+        "currentStep": { "type": "number" },
+        "statusHistory": { "type": "array" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "dateReceived", "stakeholderName", "batchNumber", "totalAmount", "status"]
+    },
+    "SlaSettings": {
+      "title": "SLA Settings",
+      "description": "Target timelines (in days) for each pipeline stage.",
+      "type": "object",
+      "properties": {
+        "receiving": { "type": "number", "description": "Target days for Receiving" },
+        "verification": { "type": "number", "description": "Target days for Verification" },
+        "sorting": { "type": "number", "description": "Target days for Sorting" },
+        "checklist": { "type": "number", "description": "Target days for Checklist" },
+        "accounting": { "type": "number", "description": "Target days for Accounting" },
+        "release": { "type": "number", "description": "Target days for Release" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/settings/sla": {
+      "schema": "SlaSettings",
+      "description": "Global SLA configurations for the tracking pipeline."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection managed by System Administrators."
+    },
+    "/soas/{soaId}": {
+      "schema": "StatementOfAccount",
+      "description": "Main collection of tracked statement accounts."
+    }
+  }
+}

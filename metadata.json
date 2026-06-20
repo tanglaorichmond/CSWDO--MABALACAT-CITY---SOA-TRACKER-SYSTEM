@@ -1,0 +1,6 @@
+{
+  "name": "Statement of Account Tracker System",
+  "description": "A secure tracking system for CSWDO Mabalacat City to monitor Statement of Account (SOA) movements and their payment stages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper: Is the user logged in?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user data document exists
+    function hasUserData() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Helper: Get user's profile and check role
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "System Administrator";
+    }
+
+    function canEdit() {
+      if (!isAuthenticated() || !exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
+        return false;
+      }
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc.role == "System Administrator" || 
+             (userDoc.role == "User" && (!('canEdit' in userDoc) || userDoc.canEdit == true));
+    }
+
+    function canDelete() {
+      if (!isAuthenticated() || !exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
+        return false;
+      }
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userDoc.role == "System Administrator" || 
+             (userDoc.role == "User" && ('canDelete' in userDoc && userDoc.canDelete == true));
+    }
+
+    // Match test_connection
+    match /test_connection/{docId} {
+      allow read: if true;
+    }
+
+    // Match users collection
+    match /users/{userId} {
+      allow read: if true; 
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Match soas collection
+    match /soas/{soaId} {
+      allow read: if true;
+      allow create, update: if canEdit();
+      allow delete: if canDelete();
+    }
+    
+    // Match registrationRequests collection
+    match /registrationRequests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // Match stakeholders collection
+    match /stakeholders/{stakeholderId} {
+      allow read: if true;
+      allow create, update: if canEdit();
+      allow delete: if canDelete();
+    }
+    
+    // Match settings collection
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
