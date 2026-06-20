@@ -85,12 +85,25 @@ export default function FinancialReport({ soas, stakeholders, currentUser, showT
     const results: StakeholderFinancialRow[] = Array.from(allStakeholderNames).map(name => {
       // Find stakeholder category from metadata, or fall back to matching SOAs, or default placeholder
       const stakeholderObj = stakeholders.find(s => s.name === name);
-      let category = stakeholderObj?.category || "hospital";
+      let rawCat = stakeholderObj?.category || "hospital";
       if (!stakeholderObj) {
         const matchingSoa = soas.find(s => s.stakeholderName === name);
         if (matchingSoa) {
-          category = matchingSoa.stakeholderCategory || "hospital";
+          rawCat = matchingSoa.stakeholderCategory || "hospital";
         }
+      }
+
+      // Normalize category names
+      const norm = (rawCat || "").toLowerCase().trim();
+      let category = "hospital";
+      if (norm === "hospital" || norm === "health" || norm === "medical") {
+        category = "hospital";
+      } else if (norm === "funeral" || norm === "memorial") {
+        category = "funeral";
+      } else if (norm === "laboratories" || norm === "laboratory" || norm === "lab") {
+        category = "laboratories";
+      } else {
+        category = norm || "hospital";
       }
 
       const stakeholderSoas = soas.filter(s => s.stakeholderName === name);
